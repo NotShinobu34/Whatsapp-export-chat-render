@@ -1,0 +1,98 @@
+/* ============================================================
+   Search Bar
+   ============================================================ */
+
+.search-bar {
+  background: var(--bg-search-bar);
+  border-bottom: 1px solid var(--border-subtle);
+  z-index: var(--z-search-bar);
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: background-color var(--transition-normal);
+}
+
+.search-bar[hidden] {
+  display: none;
+}
+
+.search-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  color: var(--color-icon);
+}
+
+.search-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: none;
+  outline: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+.search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.search-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-icon);
+  transition: background-color var(--transition-fast);
+}
+
+.search-close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .search-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Results info bar */
+.search-results-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 16px 8px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.search-results-info[hidden] {
+  display: none;
+}
+
+.search-nav-btns {
+  display: flex;
+  gap: 2px;
+}
+
+.search-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-icon);
+  transition: background-color var(--transition-fast);
+}
+
+.search-nav-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .search-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}

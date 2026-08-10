@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <pattern id="wp" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+      <!-- Phone -->
+      <path d="M30 20h12v18H30z" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35" rx="2"/>
+      <circle cx="36" cy="34" r="1.5" fill="currentColor" opacity="0.25"/>
+      <!-- Clock -->
+      <circle cx="90" cy="30" r="9" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <path d="M90 24v7l4 3" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <!-- Camera -->
+      <rect x="140" y="24" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <circle cx="150" cy="31" r="4" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <path d="M145 24l2-4h6l2 4" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <!-- Music note -->
+      <path d="M26 75v15c0 3-4 5-6 4s-2-4 1-5 4 0 5 1V78l12-3v13c0 3-4 5-6 4s-2-4 1-5 4 0 5 1V75l-12 3z" fill="currentColor" opacity="0.2"/>
+      <!-- Chat bubble -->
+      <rect x="80" y="70" width="22" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <path d="M85 86l-3 5 7-5" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <!-- Star -->
+      <path d="M150 75l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
+      <!-- Heart -->
+      <path d="M30 130c0-4 6-8 10-3 4-5 10-1 10 3 0 6-10 12-10 12s-10-6-10-12z" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
+      <!-- Lock -->
+      <rect x="85" y="130" width="12" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <path d="M88 130v-4c0-3 6-3 6 0v4" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <!-- Pin / Location -->
+      <path d="M150 125c-5 0-8 4-8 8 0 6 8 12 8 12s8-6 8-12c0-4-3-8-8-8z" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
+      <circle cx="150" cy="133" r="2.5" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
+      <!-- Smiley -->
+      <circle cx="36" cy="180" r="9" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <circle cx="33" cy="178" r="1" fill="currentColor" opacity="0.25"/>
+      <circle cx="39" cy="178" r="1" fill="currentColor" opacity="0.25"/>
+      <path d="M32 183c2 2 6 2 8 0" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
+      <!-- Globe -->
+      <circle cx="90" cy="180" r="9" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.3"/>
+      <ellipse cx="90" cy="180" rx="4" ry="9" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.25"/>
+      <path d="M81 177h18M81 183h18" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.2"/>
+      <!-- Document -->
+      <path d="M142 170h14l4 4v16h-18z" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <path d="M156 174h-4v-4" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.35"/>
+      <path d="M146 180h8M146 184h6" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.25"/>
+    </pattern>
+  </defs>
+  <rect width="400" height="400" fill="url(#wp)"/>
+</svg>
