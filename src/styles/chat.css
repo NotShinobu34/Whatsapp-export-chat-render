@@ -1,0 +1,299 @@
+/* ============================================================
+   Chat UI — Message Bubbles, Tails, Ticks, Separators
+   ============================================================ */
+
+/* ---------- Chat View Container ---------- */
+.chat-view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background: var(--bg-main);
+}
+
+/* ---------- Chat Canvas ---------- */
+.chat-canvas {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg-chat-canvas);
+}
+
+/* WhatsApp Wallpaper Pattern */
+.chat-wallpaper {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-wallpaper);
+  opacity: 0.4;
+  pointer-events: none;
+  background-image: url('../assets/wallpaper.svg');
+  background-repeat: repeat;
+  background-size: 400px 400px;
+}
+
+[data-theme="dark"] .chat-wallpaper {
+  opacity: 0.06;
+}
+
+/* ---------- Messages Container ---------- */
+.messages-container {
+  position: relative;
+  z-index: var(--z-messages);
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 8px 5%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Message Row ---------- */
+.message-row {
+  display: flex;
+  margin-bottom: 2px;
+  animation: msgEnter 0.25s ease-out both;
+}
+
+.message-row.incoming {
+  justify-content: flex-start;
+}
+
+.message-row.outgoing {
+  justify-content: flex-end;
+}
+
+/* Spacing after a different sender */
+.message-row.new-sender {
+  margin-top: 10px;
+}
+
+/* ---------- Message Bubble ---------- */
+.message-bubble {
+  position: relative;
+  max-width: var(--bubble-max-width-desktop);
+  padding: 6px 7px 8px 9px;
+  border-radius: var(--bubble-radius);
+  box-shadow: var(--shadow-bubble);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.45;
+}
+
+.message-row.incoming .message-bubble {
+  background: var(--bg-bubble-in);
+  border-top-left-radius: 0;
+}
+
+.message-row.outgoing .message-bubble {
+  background: var(--bg-bubble-out);
+  border-top-right-radius: 0;
+}
+
+/* Bubble tail */
+.message-row.has-tail.incoming .message-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(var(--bubble-tail-size) * -1);
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 var(--bubble-tail-size) var(--bubble-tail-size) 0;
+  border-color: transparent var(--bg-bubble-in) transparent transparent;
+}
+
+.message-row.has-tail.outgoing .message-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: calc(var(--bubble-tail-size) * -1);
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 var(--bubble-tail-size) var(--bubble-tail-size);
+  border-color: transparent transparent transparent var(--bg-bubble-out);
+}
+
+/* Consecutive messages — no tail, tighter spacing */
+.message-row:not(.has-tail) {
+  margin-bottom: 1px;
+}
+
+.message-row:not(.has-tail).incoming .message-bubble {
+  border-top-left-radius: var(--bubble-radius);
+}
+
+.message-row:not(.has-tail).outgoing .message-bubble {
+  border-top-right-radius: var(--bubble-radius);
+}
+
+/* ---------- Sender Name (Group chats) ---------- */
+.sender-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin-bottom: 2px;
+  display: block;
+}
+
+/* ---------- Message Text ---------- */
+.message-text {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.message-row.outgoing .message-text {
+  color: var(--text-bubble-out-primary);
+}
+
+/* Emoji-only messages */
+.message-text.emoji-only {
+  font-size: var(--font-size-emoji);
+  line-height: 1.2;
+}
+
+.message-text.emoji-only ~ .message-meta {
+  margin-top: 4px;
+}
+
+/* ---------- Message Meta (Timestamp + Ticks) ---------- */
+.message-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  float: right;
+  margin: 4px 0 -4px 12px;
+  font-size: var(--font-size-xs);
+  color: var(--text-timestamp);
+  white-space: nowrap;
+}
+
+.message-row.outgoing .message-meta {
+  color: var(--text-bubble-out-secondary);
+}
+
+/* Read Receipt Ticks */
+.tick-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 1px;
+}
+
+.tick-icon svg {
+  width: 16px;
+  height: 11px;
+}
+
+.tick-icon.read svg {
+  color: var(--color-ticks-read);
+}
+
+.tick-icon.delivered svg {
+  color: var(--color-ticks-delivered);
+}
+
+/* ---------- System Message ---------- */
+.system-message {
+  align-self: center;
+  max-width: 80%;
+  text-align: center;
+  background: var(--bg-system-msg);
+  color: var(--text-system);
+  font-size: var(--font-size-sm);
+  padding: 5px 12px;
+  border-radius: 7.5px;
+  margin: 8px auto;
+  box-shadow: var(--shadow-bubble);
+  line-height: 1.4;
+}
+
+/* ---------- Date Separator ---------- */
+.date-separator {
+  align-self: center;
+  background: var(--bg-date-chip);
+  color: var(--text-system);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 7.5px;
+  margin: 12px auto 8px;
+  box-shadow: var(--shadow-bubble);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Scroll to Bottom Button ---------- */
+.scroll-bottom-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--bg-scroll-btn);
+  color: var(--color-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-scroll-btn);
+  z-index: var(--z-scroll-btn);
+  transition: all var(--transition-fast);
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.scroll-bottom-btn[hidden] {
+  display: none;
+}
+
+.scroll-bottom-btn.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.scroll-bottom-btn:hover {
+  background: var(--bg-sender-hover);
+  transform: scale(1.05);
+}
+
+/* ---------- Search Highlight ---------- */
+.search-highlight {
+  background: rgba(255, 235, 59, 0.45);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+[data-theme="dark"] .search-highlight {
+  background: rgba(255, 235, 59, 0.25);
+}
+
+.search-highlight.active {
+  background: rgba(255, 152, 0, 0.6);
+}
+
+[data-theme="dark"] .search-highlight.active {
+  background: rgba(255, 152, 0, 0.4);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .message-bubble {
+    max-width: var(--bubble-max-width-mobile);
+  }
+
+  .messages-container {
+    padding: 8px 3%;
+  }
+}
+
+/* ---------- Message Enter Animation ---------- */
+@keyframes msgEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

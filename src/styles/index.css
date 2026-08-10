@@ -1,0 +1,211 @@
+/* ============================================================
+   WhatsApp Chat Visualizer — Design System & Global Tokens
+   ============================================================ */
+
+/* ---------- CSS Custom Properties (Light Mode — Default) ---------- */
+:root {
+  /* Backgrounds */
+  --bg-main: #D1D7DB;
+  --bg-header: #F0F2F5;
+  --bg-chat-canvas: #E5DDD5;
+  --bg-bubble-in: #FFFFFF;
+  --bg-bubble-out: #E7FFDB;
+  --bg-no-media-card: #F5F6F6;
+  --bg-system-msg: rgba(255, 255, 255, 0.95);
+  --bg-date-chip: rgba(255, 255, 255, 0.95);
+  --bg-search-bar: #F0F2F5;
+  --bg-input: #FFFFFF;
+  --bg-modal-overlay: rgba(0, 0, 0, 0.5);
+  --bg-modal-card: #FFFFFF;
+  --bg-sender-hover: #F0F2F5;
+  --bg-sender-selected: #E7FFDB;
+  --bg-scroll-btn: #FFFFFF;
+
+  /* Text */
+  --text-primary: #111B21;
+  --text-secondary: #667781;
+  --text-timestamp: #667781;
+  --text-sender-name: #1FA855;
+  --text-system: #54656F;
+  --text-link: #027EB5;
+  --text-bubble-out-primary: #111B21;
+  --text-bubble-out-secondary: #667781;
+
+  /* Accents & Icons */
+  --color-ticks-read: #53BDEB;
+  --color-ticks-delivered: #667781;
+  --color-whatsapp-green: #25D366;
+  --color-whatsapp-teal: #128C7E;
+  --color-whatsapp-dark-teal: #075E54;
+  --color-accent: #00A884;
+  --color-icon: #54656F;
+  --color-icon-header: #54656F;
+  --color-no-media-icon: #8696A0;
+
+  /* Borders */
+  --border-subtle: #E9EDEF;
+  --border-drop-zone: #BFC8D0;
+
+  /* Shadows */
+  --shadow-card: 0 4px 32px rgba(0, 0, 0, 0.08);
+  --shadow-bubble: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+  --shadow-header: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 16px 64px rgba(0, 0, 0, 0.2);
+  --shadow-scroll-btn: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  /* Sizing */
+  --header-height: 60px;
+  --search-bar-height: 52px;
+  --bubble-max-width-desktop: 65%;
+  --bubble-max-width-mobile: 85%;
+  --bubble-radius: 7.5px;
+  --bubble-tail-size: 8px;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.6875rem;    /* 11px */
+  --font-size-sm: 0.75rem;      /* 12px */
+  --font-size-base: 0.875rem;   /* 14px */
+  --font-size-md: 0.9375rem;    /* 15px */
+  --font-size-lg: 1.0625rem;    /* 17px */
+  --font-size-xl: 1.25rem;      /* 20px */
+  --font-size-2xl: 1.625rem;    /* 26px */
+  --font-size-emoji: 2.625rem;  /* 42px — emoji-only messages */
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+  --transition-slow: 500ms ease;
+
+  /* Z-index layers */
+  --z-wallpaper: 0;
+  --z-messages: 1;
+  --z-scroll-btn: 5;
+  --z-header: 10;
+  --z-search-bar: 9;
+  --z-modal: 100;
+}
+
+/* ---------- Dark Mode Tokens ---------- */
+[data-theme="dark"] {
+  --bg-main: #111B21;
+  --bg-header: #202C33;
+  --bg-chat-canvas: #0B141A;
+  --bg-bubble-in: #202C33;
+  --bg-bubble-out: #005C4B;
+  --bg-no-media-card: #111B21;
+  --bg-system-msg: rgba(32, 44, 51, 0.95);
+  --bg-date-chip: rgba(32, 44, 51, 0.95);
+  --bg-search-bar: #202C33;
+  --bg-input: #2A3942;
+  --bg-modal-overlay: rgba(0, 0, 0, 0.7);
+  --bg-modal-card: #202C33;
+  --bg-sender-hover: #2A3942;
+  --bg-sender-selected: #005C4B;
+  --bg-scroll-btn: #202C33;
+
+  --text-primary: #E9EDEF;
+  --text-secondary: #8696A0;
+  --text-timestamp: #8696A0;
+  --text-sender-name: #06CF9C;
+  --text-system: #8696A0;
+  --text-link: #53BDEB;
+  --text-bubble-out-primary: #E9EDEF;
+  --text-bubble-out-secondary: rgba(255, 255, 255, 0.6);
+
+  --color-ticks-delivered: rgba(255, 255, 255, 0.45);
+  --color-icon: #AEBAC1;
+  --color-icon-header: #AEBAC1;
+  --color-no-media-icon: #667781;
+
+  --border-subtle: #313D45;
+  --border-drop-zone: #3B4A54;
+
+  --shadow-card: 0 4px 32px rgba(0, 0, 0, 0.3);
+  --shadow-bubble: none;
+  --shadow-header: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 16px 64px rgba(0, 0, 0, 0.5);
+  --shadow-scroll-btn: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Global Reset ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  background-color: var(--bg-main);
+  line-height: 1.45;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(0, 168, 132, 0.3);
+}
+
+/* Visually hidden utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
