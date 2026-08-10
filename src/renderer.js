@@ -111,7 +111,7 @@ export function estimateRowHeight(row) {
         const len = msg.text.length;
         const lines = (msg.text.match(/\n/g) || []).length + 1;
 
-        if (isEmojiOnly(msg.text)) {
+        if (len < 50 && isEmojiOnly(msg.text)) {
           h += 50;
         } else if (len <= 30) {
           h += 32;

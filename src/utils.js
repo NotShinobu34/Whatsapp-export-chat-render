@@ -45,10 +45,11 @@ export function getInitials(name) {
 }
 
 /**
- * Format a Date object into a short time string (HH:MM am/pm).
+ * Format a timestamp (number) into a short time string (HH:MM am/pm).
  */
-export function formatTime(date) {
-  if (!(date instanceof Date) || isNaN(date)) return '';
+export function formatTime(ts) {
+  if (!ts) return '';
+  const date = new Date(ts);
   let hours = date.getHours();
   const minutes = date.getMinutes().toString().padStart(2, '0');
   const ampm = hours >= 12 ? 'pm' : 'am';
@@ -57,10 +58,11 @@ export function formatTime(date) {
 }
 
 /**
- * Format a Date into a human-readable date string for date separator chips.
+ * Format a timestamp into a human-readable date string for date separator chips.
  */
-export function formatDateSeparator(date) {
-  if (!(date instanceof Date) || isNaN(date)) return '';
+export function formatDateSeparator(ts) {
+  if (!ts) return '';
+  const date = new Date(ts);
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -77,8 +79,9 @@ export function formatDateSeparator(date) {
 /**
  * Get a date key string for grouping messages by day (YYYY-MM-DD).
  */
-export function getDateKey(date) {
-  if (!(date instanceof Date) || isNaN(date)) return '';
+export function getDateKey(ts) {
+  if (!ts) return '';
+  const date = new Date(ts);
   return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
 }
 
@@ -87,8 +90,9 @@ export function getDateKey(date) {
  * Returns true for 1-3 emoji with optional whitespace.
  */
 export function isEmojiOnly(text) {
-  if (!text) return false;
+  if (!text || text.length > 50) return false;
   const stripped = text.replace(/\s/g, '');
+  if (stripped.length === 0 || stripped.length > 40) return false;
   // Match emoji sequences (including ZWJ sequences, skin tone modifiers, etc.)
   const emojiRegex = /^(?:\p{Emoji_Presentation}|\p{Emoji}\uFE0F|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|\p{Emoji}(?:\u200D\p{Emoji})*)+$/u;
   return emojiRegex.test(stripped) && [...stripped].length <= 8;

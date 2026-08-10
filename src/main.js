@@ -164,14 +164,6 @@ function parseInWorker(rawText) {
       worker.terminate();
       chatData = msg.data;
 
-      // Reconstruct Date objects (worker sends them as strings via structured clone)
-      for (let i = 0; i < chatData.messages.length; i++) {
-        const m = chatData.messages[i];
-        if (!(m.timestamp instanceof Date)) {
-          m.timestamp = new Date(m.timestamp);
-        }
-      }
-
       if (chatData.messages.length === 0) {
         showError('No messages found. Check the file format.');
         showProcessing(false);

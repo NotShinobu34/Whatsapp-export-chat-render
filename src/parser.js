@@ -80,7 +80,7 @@ function parseDateTime(dateStr, timeStr) {
   if (am && h === 12) h = 0;
 
   const d = new Date(year, mon, day, h, m, s);
-  return isNaN(d.getTime()) ? null : d;
+  return isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
 /* ─── Detect media omission ────────────────────────────────── */
@@ -111,9 +111,8 @@ export function parseChat(rawText, onProgress) {
   /* ── Step 1: Normalise line endings & strip BOM ─────────── */
   let text = rawText;
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);       // BOM
-  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');        // CRLF → LF
 
-  const lines = text.split('\n');
+  const lines = text.split(/\r?\n/);
   const lineCount = lines.length;
 
   if (onProgress) onProgress(10, 'Scanning messages…');
