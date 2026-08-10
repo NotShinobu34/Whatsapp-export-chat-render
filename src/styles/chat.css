@@ -36,22 +36,31 @@
   opacity: 0.06;
 }
 
-/* ---------- Messages Container ---------- */
+/* ---------- Messages Container (Virtual Scroll) ---------- */
 .messages-container {
   position: relative;
   z-index: var(--z-messages);
+  width: 100%;
+  contain: layout style;
+}
+
+/* ── Virtual-row wrapper (absolute-positioned by scroller) ── */
+.v-row {
   max-width: 900px;
   margin: 0 auto;
-  padding: 8px 5%;
+  padding: 0 5%;
+  box-sizing: border-box;
+}
+
+.v-row-center {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
 }
 
 /* ---------- Message Row ---------- */
 .message-row {
   display: flex;
   margin-bottom: 2px;
-  animation: msgEnter 0.25s ease-out both;
 }
 
 .message-row.incoming {
@@ -194,7 +203,7 @@
 
 /* ---------- System Message ---------- */
 .system-message {
-  align-self: center;
+  display: inline-block;
   max-width: 80%;
   text-align: center;
   background: var(--bg-system-msg);
@@ -202,21 +211,21 @@
   font-size: var(--font-size-sm);
   padding: 5px 12px;
   border-radius: 7.5px;
-  margin: 8px auto;
+  margin: 8px 0;
   box-shadow: var(--shadow-bubble);
   line-height: 1.4;
 }
 
 /* ---------- Date Separator ---------- */
 .date-separator {
-  align-self: center;
+  display: inline-block;
   background: var(--bg-date-chip);
   color: var(--text-system);
   font-size: var(--font-size-sm);
   font-weight: 500;
   padding: 5px 12px;
   border-radius: 7.5px;
-  margin: 12px auto 8px;
+  margin: 4px 0;
   box-shadow: var(--shadow-bubble);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -281,19 +290,7 @@
     max-width: var(--bubble-max-width-mobile);
   }
 
-  .messages-container {
-    padding: 8px 3%;
-  }
-}
-
-/* ---------- Message Enter Animation ---------- */
-@keyframes msgEnter {
-  0% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
+  .v-row {
+    padding: 0 3%;
   }
 }

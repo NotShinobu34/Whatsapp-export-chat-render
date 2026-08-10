@@ -1,5 +1,5 @@
 /**
- * parser.js — WhatsApp Chat Export Parser Engine
+ * parser.js — WhatsApp Chat Export Parser Engine (v2 — optimized for 1M+ messages)
  *
  * Supports:
  *   Format A (iOS 12h/24h):  [DD/MM/YY, HH:MM:SS AM/PM] Sender: Message
@@ -8,268 +8,203 @@
  *   Format D (System events): Timestamped lines without "Sender: " pattern
  */
 
-/**
- * Media-omission keyword patterns (case-insensitive).
- */
+/* ─── Media-omission keyword patterns (case-insensitive) ─── */
 const MEDIA_PATTERNS = [
-  { regex: /<media omitted>/i, type: 'generic' },
-  { regex: /image omitted/i, type: 'image' },
-  { regex: /video omitted/i, type: 'video' },
-  { regex: /audio omitted/i, type: 'audio' },
-  { regex: /sticker omitted/i, type: 'sticker' },
-  { regex: /gif omitted/i, type: 'gif' },
-  { regex: /document omitted/i, type: 'document' },
-  { regex: /contact card omitted/i, type: 'contact' },
-  { regex: /<attached:\s*.*?>/i, type: 'generic' },
-  { regex: /\(file attached\)/i, type: 'document' },
-  { regex: /\.jpg\s*\(file attached\)/i, type: 'image' },
-  { regex: /\.png\s*\(file attached\)/i, type: 'image' },
-  { regex: /\.mp4\s*\(file attached\)/i, type: 'video' },
-  { regex: /\.opus\s*\(file attached\)/i, type: 'audio' },
-  { regex: /\.mp3\s*\(file attached\)/i, type: 'audio' },
-  { regex: /\.pdf\s*\(file attached\)/i, type: 'document' },
-  { regex: /\.webp\s*\(file attached\)/i, type: 'sticker' },
-  { regex: /\.vcf\s*\(file attached\)/i, type: 'contact' },
+  { re: /<media omitted>/i,              t: 'generic'  },
+  { re: /image omitted/i,               t: 'image'    },
+  { re: /video omitted/i,               t: 'video'    },
+  { re: /audio omitted/i,               t: 'audio'    },
+  { re: /sticker omitted/i,             t: 'sticker'  },
+  { re: /gif omitted/i,                 t: 'gif'      },
+  { re: /document omitted/i,            t: 'document' },
+  { re: /contact card omitted/i,        t: 'contact'  },
+  { re: /<attached:\s*.*?>/i,           t: 'generic'  },
+  { re: /\.jpe?g\s*\(file attached\)/i, t: 'image'    },
+  { re: /\.png\s*\(file attached\)/i,   t: 'image'    },
+  { re: /\.mp4\s*\(file attached\)/i,   t: 'video'    },
+  { re: /\.3gp\s*\(file attached\)/i,   t: 'video'    },
+  { re: /\.opus\s*\(file attached\)/i,  t: 'audio'    },
+  { re: /\.mp3\s*\(file attached\)/i,   t: 'audio'    },
+  { re: /\.m4a\s*\(file attached\)/i,   t: 'audio'    },
+  { re: /\.pdf\s*\(file attached\)/i,   t: 'document' },
+  { re: /\.docx?\s*\(file attached\)/i, t: 'document' },
+  { re: /\.webp\s*\(file attached\)/i,  t: 'sticker'  },
+  { re: /\.vcf\s*\(file attached\)/i,   t: 'contact'  },
+  { re: /\(file attached\)/i,           t: 'document' },
 ];
 
-/**
- * System message patterns (lines that match a timestamp but have no "Sender:" pattern).
- * These are common WhatsApp system event strings.
- */
+/* ─── System event substrings ──────────────────────────────── */
 const SYSTEM_KEYWORDS = [
   'messages and calls are end-to-end encrypted',
-  'created group',
-  'changed the subject',
-  'changed this group',
-  'changed the group',
-  'was added',
-  'added you',
-  'removed',
-  'left',
-  'joined using this group',
-  'changed their phone number',
-  'deleted this message',
-  'message was deleted',
-  'you deleted this message',
-  'this message was deleted',
-  'missed voice call',
-  'missed video call',
-  'security code changed',
-  'disappeared',
-  'turned on disappearing',
-  'turned off disappearing',
-  'pinned a message',
-  'your security code',
-  'you\'re now an admin',
-  'waiting for this message',
+  'created group', 'changed the subject', 'changed this group',
+  'changed the group', 'was added', 'added you', 'removed you',
+  'left', 'joined using this group', 'changed their phone number',
+  'deleted this message', 'message was deleted',
+  'you deleted this message', 'this message was deleted',
+  'missed voice call', 'missed video call',
+  'security code changed', 'disappearing messages',
+  'turned on disappearing', 'turned off disappearing',
+  'pinned a message', 'your security code',
+  'you\'re now an admin', 'waiting for this message',
+  'you were removed', 'you were added',
+  'changed the description', 'changed this group\'s icon',
 ];
 
-/**
- * Strip invisible Unicode characters WhatsApp inserts.
- */
-function cleanUnicode(text) {
-  return text.replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2069\u200b\u00a0]/g, '');
+/* ─── Timestamp regex ──────────────────────────────────────── */
+const TS_RE = /^\[?(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?)\]?\s[-–]?\s?(.*)$/;
+
+/* ─── Strip invisible Unicode chars WhatsApp injects ───────── */
+function cleanLine(s) {
+  // fast path — avoid regex when possible
+  if (s.charCodeAt(0) < 128 && s.indexOf('\u200e') === -1) return s;
+  return s.replace(/[\u200e\u200f\u202a-\u202e\u2069\u200b\u00a0\uFEFF]/g, '');
 }
 
-/**
- * Unified timestamp regex — handles all 4 format signatures.
- *
- * Captures:
- *   Group 1: Full date string  (e.g. "25/12/23" or "25/12/2023")
- *   Group 2: Full time string  (e.g. "14:05" or "2:05:30 PM")
- *   Group 3: Rest of the line after the separator
- */
-const TIMESTAMP_REGEX = /^\[?(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?)\]?\s[-–]?\s?(.*)$/;
-
-/**
- * Parse a date string like "DD/MM/YY" or "DD/MM/YYYY" and a time string
- * into a JavaScript Date object.
- */
+/* ─── Parse "DD/MM/YY" or "DD/MM/YYYY" + time into Date ──── */
 function parseDateTime(dateStr, timeStr) {
-  // Parse date parts
-  const dateParts = dateStr.split('/');
-  if (dateParts.length !== 3) return new Date(NaN);
+  const dp = dateStr.split('/');
+  if (dp.length !== 3) return null;
 
-  let day = parseInt(dateParts[0], 10);
-  let month = parseInt(dateParts[1], 10) - 1; // JS months are 0-indexed
-  let year = parseInt(dateParts[2], 10);
+  let day  = +dp[0];
+  let mon  = +dp[1] - 1;
+  let year = +dp[2];
+  if (year < 100) year += year > 50 ? 1900 : 2000;
 
-  // Handle 2-digit year
-  if (year < 100) {
-    year += year > 50 ? 1900 : 2000;
-  }
+  let t = timeStr.trim();
+  const pm = /pm$/i.test(t);
+  const am = /am$/i.test(t);
+  t = t.replace(/\s?[AaPp][Mm]$/g, '');
+  const tp = t.split(':');
+  let h = +tp[0], m = +tp[1], s = tp[2] ? +tp[2] : 0;
+  if (pm && h < 12) h += 12;
+  if (am && h === 12) h = 0;
 
-  // Parse time parts
-  let cleanTime = timeStr.trim();
-  let isPM = /pm/i.test(cleanTime);
-  let isAM = /am/i.test(cleanTime);
-  cleanTime = cleanTime.replace(/\s?[AaPp][Mm]/g, '').trim();
-
-  const timeParts = cleanTime.split(':');
-  let hours = parseInt(timeParts[0], 10);
-  const minutes = parseInt(timeParts[1], 10);
-  const seconds = timeParts[2] ? parseInt(timeParts[2], 10) : 0;
-
-  // Apply AM/PM
-  if (isPM && hours < 12) hours += 12;
-  if (isAM && hours === 12) hours = 0;
-
-  return new Date(year, month, day, hours, minutes, seconds);
+  const d = new Date(year, mon, day, h, m, s);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * Detect if a message body is a media-omission indicator.
- * Returns { isMedia: true, mediaType: string } or { isMedia: false }.
- */
+/* ─── Detect media omission ────────────────────────────────── */
 function detectMedia(text) {
-  const trimmed = text.trim();
-  for (const pattern of MEDIA_PATTERNS) {
-    if (pattern.regex.test(trimmed)) {
-      return { isMedia: true, mediaType: pattern.type };
-    }
+  for (const p of MEDIA_PATTERNS) {
+    if (p.re.test(text)) return p.t;
   }
-  return { isMedia: false };
+  return null;
 }
 
-/**
- * Check if remainder text looks like a system message (no "sender: message" pattern).
- */
-function isSystemLine(remainder) {
-  // If it contains "Sender: Message" pattern, it's NOT a system message
-  if (/^.+?:\s/.test(remainder)) {
-    // But double-check — the "sender" part shouldn't match system keywords
-    const potentialSender = remainder.split(':')[0].trim().toLowerCase();
-    const isSystemSender = SYSTEM_KEYWORDS.some(kw => potentialSender.includes(kw));
-    if (!isSystemSender) return false;
+/* ─── Check if line is a system event ─────────────────────── */
+function isSystemText(text) {
+  const low = text.toLowerCase();
+  for (const kw of SYSTEM_KEYWORDS) {
+    if (low.includes(kw)) return true;
   }
-  // Lines that match known system keywords
-  const lower = remainder.toLowerCase();
-  return SYSTEM_KEYWORDS.some(kw => lower.includes(kw));
-}
-
-/**
- * Split "Sender: Message" from the remainder text.
- * Returns { sender, message } or null if no valid split found.
- */
-function splitSenderMessage(remainder) {
-  // Find the first colon that separates sender from message
-  const colonIndex = remainder.indexOf(':');
-  if (colonIndex <= 0) return null;
-
-  const sender = remainder.substring(0, colonIndex).trim();
-  const message = remainder.substring(colonIndex + 1).trim();
-
-  // Sender name shouldn't be empty or absurdly long
-  if (!sender || sender.length > 100) return null;
-
-  return { sender, message };
+  return false;
 }
 
 /**
  * Main parse function.
  *
- * @param {string} rawText - The raw content of the WhatsApp export .txt file.
- * @returns {{ messages: Array, senders: string[], isGroup: boolean }}
+ * @param {string} rawText – raw .txt file content
+ * @param {Function} [onProgress] – (percent:number, stage:string) => void
+ * @returns {{ messages: object[], senders: string[], isGroup: boolean }}
  */
-export function parseChat(rawText) {
-  // Clean unicode artifacts
-  const cleaned = cleanUnicode(rawText);
+export function parseChat(rawText, onProgress) {
+  /* ── Step 1: Normalise line endings & strip BOM ─────────── */
+  let text = rawText;
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);       // BOM
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');        // CRLF → LF
 
-  // Split into lines
-  const lines = cleaned.split('\n');
+  const lines = text.split('\n');
+  const lineCount = lines.length;
 
+  if (onProgress) onProgress(10, 'Scanning messages…');
+
+  /* ── Step 2: Iterate lines, join multi-line, classify ────── */
   const messages = [];
   const senderSet = new Set();
-  let currentMessage = null;
-  let messageId = 0;
+  let cur = null;                     // current message being assembled
+  let id = 0;
+  const progressInterval = Math.max(1, Math.floor(lineCount / 20));  // report ~20 times
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  for (let i = 0; i < lineCount; i++) {
+    /* progress callback */
+    if (onProgress && i % progressInterval === 0) {
+      onProgress(10 + Math.floor((i / lineCount) * 80), 'Scanning messages…');
+    }
 
-    // Skip empty lines
-    if (!line.trim()) {
-      if (currentMessage && currentMessage.type !== 'system') {
-        currentMessage.text += '\n';
-      }
+    const raw = lines[i];
+    if (raw.length === 0) {
+      // Preserve blank lines inside multi-line messages
+      if (cur && cur.type !== 'system') cur.text += '\n';
       continue;
     }
 
-    const match = line.match(TIMESTAMP_REGEX);
+    const line = cleanLine(raw);
+    const m = TS_RE.exec(line);
 
-    if (match) {
-      // This line starts a new message (has a timestamp)
-      // Save the previous message first
-      if (currentMessage) {
-        currentMessage.text = currentMessage.text.trim();
-        messages.push(currentMessage);
+    if (m) {
+      /* ── This line starts a new timestamped entry ──────── */
+      // Flush previous message
+      if (cur) {
+        cur.text = cur.text.trimEnd();
+        messages.push(cur);
       }
 
-      const dateStr = match[1];
-      const timeStr = match[2];
-      const remainder = match[3];
-      const timestamp = parseDateTime(dateStr, timeStr);
+      const ts = parseDateTime(m[1], m[2]);
+      const rest = m[3];
 
-      // Check if it's a system message
-      if (isSystemLine(remainder)) {
-        currentMessage = {
-          id: messageId++,
-          timestamp,
-          sender: null,
-          text: remainder,
-          type: 'system',
-          isOutgoing: false,
-        };
-      } else {
-        // Try to split into sender + message
-        const split = splitSenderMessage(remainder);
+      // Try "Sender: Message" split at the FIRST colon
+      const colon = rest.indexOf(': ');
 
-        if (split) {
-          const { sender, message } = split;
+      if (colon > 0 && !isSystemText(rest)) {
+        const sender  = rest.substring(0, colon).trim();
+        const msgText = rest.substring(colon + 2);
+
+        if (sender.length > 0 && sender.length <= 120) {
           senderSet.add(sender);
-
-          // Check for media omission
-          const mediaCheck = detectMedia(message);
-
-          currentMessage = {
-            id: messageId++,
-            timestamp,
+          const mt = detectMedia(msgText);
+          cur = {
+            id: id++,
+            timestamp: ts,
             sender,
-            text: message,
-            type: mediaCheck.isMedia ? 'media-omitted' : 'text',
-            mediaType: mediaCheck.isMedia ? mediaCheck.mediaType : undefined,
-            isOutgoing: false, // Will be set after sender selection
-          };
-        } else {
-          // No valid sender:message split — treat as system
-          currentMessage = {
-            id: messageId++,
-            timestamp,
-            sender: null,
-            text: remainder,
-            type: 'system',
+            text: msgText,
+            type: mt ? 'media-omitted' : 'text',
+            mediaType: mt || undefined,
             isOutgoing: false,
           };
+          continue;
         }
       }
+
+      // No valid sender split → system message
+      cur = {
+        id: id++,
+        timestamp: ts,
+        sender: null,
+        text: rest,
+        type: 'system',
+        isOutgoing: false,
+      };
     } else {
-      // This line is a continuation of the previous message
-      if (currentMessage) {
-        currentMessage.text += '\n' + line;
-        // Re-check for media in case the full text now matches
+      /* ── Continuation of the previous message ──────────── */
+      if (cur) {
+        cur.text += '\n' + line;
       }
-      // If no current message exists, skip orphan lines
+      // Orphan lines (before any timestamp) are silently skipped
     }
   }
 
-  // Don't forget the last message
-  if (currentMessage) {
-    currentMessage.text = currentMessage.text.trim();
-    messages.push(currentMessage);
+  // Flush final message
+  if (cur) {
+    cur.text = cur.text.trimEnd();
+    messages.push(cur);
   }
+
+  if (onProgress) onProgress(95, 'Finalising…');
 
   const senders = Array.from(senderSet);
   const isGroup = senders.length > 2;
 
+  if (onProgress) onProgress(100, 'Done');
   return { messages, senders, isGroup };
 }
 
@@ -277,8 +212,7 @@ export function parseChat(rawText) {
  * Mark outgoing messages based on the selected sender name.
  */
 export function markOutgoing(messages, myName) {
-  for (const msg of messages) {
-    msg.isOutgoing = msg.sender === myName;
+  for (let i = 0, len = messages.length; i < len; i++) {
+    messages[i].isOutgoing = messages[i].sender === myName;
   }
-  return messages;
 }

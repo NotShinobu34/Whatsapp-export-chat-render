@@ -1,10 +1,10 @@
 /**
- * main.js — App Orchestrator
+ * main.js — App Orchestrator (v2 — Web Worker parsing + Virtual Scrolling)
  *
- * Wires together: file upload → parser → sender selection → renderer → search.
+ * Flow: File upload → Worker parse → Sender modal → Virtual-scroll render → Search
  */
 
-// ---- CSS Imports ----
+/* ── CSS Imports ──────────────────────────────────────────── */
 import './styles/index.css';
 import './styles/landing.css';
 import './styles/header.css';
@@ -14,150 +14,124 @@ import './styles/modal.css';
 import './styles/search.css';
 import './styles/animations.css';
 
-// ---- Module Imports ----
-import { parseChat, markOutgoing } from './parser.js';
-import { renderChatHeader, renderMessages, scrollToBottom } from './renderer.js';
+/* ── Module Imports ───────────────────────────────────────── */
+import { markOutgoing } from './parser.js';
+import {
+  prepareRows,
+  estimateRowHeight,
+  renderRow,
+  renderChatHeader,
+} from './renderer.js';
 import { initTheme, toggleTheme } from './theme.js';
-import { getInitials, getSenderColor, debounce, escapeHtml } from './utils.js';
+import { getInitials, getSenderColor, resetSenderColors, debounce } from './utils.js';
+import { VirtualScroller } from './virtual-scroller.js';
 
 /* ================================================================
    State
    ================================================================ */
-let chatData = null;     // { messages, senders, isGroup }
-let myName = null;       // Selected sender name
-let searchMatches = [];  // Array of message elements matching search
-let searchIndex = -1;    // Current search match index
+let chatData = null;        // { messages, senders, isGroup }
+let myName = null;
+let allRows = [];           // pre-computed row array (date-seps + messages)
+let scroller = null;        // VirtualScroller instance
+let searchQuery = '';
+let searchHits = [];        // indices into allRows that match search
+let searchCursor = -1;
 
 /* ================================================================
    DOM References
    ================================================================ */
-const landingPage       = document.getElementById('landing-page');
-const dropZone          = document.getElementById('drop-zone');
-const fileInput         = document.getElementById('file-input');
-const senderModal       = document.getElementById('sender-modal');
-const senderList        = document.getElementById('sender-list');
-const senderConfirmBtn  = document.getElementById('sender-confirm-btn');
-const chatView          = document.getElementById('chat-view');
-const backBtn           = document.getElementById('back-btn');
-const themeToggleBtn    = document.getElementById('theme-toggle-btn');
-const searchToggleBtn   = document.getElementById('search-toggle-btn');
-const searchBar         = document.getElementById('search-bar');
-const searchInput       = document.getElementById('search-input');
-const searchCloseBtn    = document.getElementById('search-close-btn');
-const searchResultsInfo = document.getElementById('search-results-info');
-const searchResultsCount= document.getElementById('search-results-count');
-const searchPrevBtn     = document.getElementById('search-prev-btn');
-const searchNextBtn     = document.getElementById('search-next-btn');
-const scrollBottomBtn   = document.getElementById('scroll-bottom-btn');
-const chatCanvas        = document.getElementById('chat-canvas');
+const $landing        = document.getElementById('landing-page');
+const $dropZone       = document.getElementById('drop-zone');
+const $fileInput      = document.getElementById('file-input');
+const $modal          = document.getElementById('sender-modal');
+const $senderList     = document.getElementById('sender-list');
+const $senderConfirm  = document.getElementById('sender-confirm-btn');
+const $chatView       = document.getElementById('chat-view');
+const $backBtn        = document.getElementById('back-btn');
+const $themeBtn       = document.getElementById('theme-toggle-btn');
+const $searchBtn      = document.getElementById('search-toggle-btn');
+const $searchBar      = document.getElementById('search-bar');
+const $searchInput    = document.getElementById('search-input');
+const $searchClose    = document.getElementById('search-close-btn');
+const $searchInfo     = document.getElementById('search-results-info');
+const $searchCount    = document.getElementById('search-results-count');
+const $searchPrev     = document.getElementById('search-prev-btn');
+const $searchNext     = document.getElementById('search-next-btn');
+const $scrollBtn      = document.getElementById('scroll-bottom-btn');
+const $chatCanvas     = document.getElementById('chat-canvas');
+const $msgContainer   = document.getElementById('messages-container');
 
 /* ================================================================
-   Initialize
+   Init
    ================================================================ */
 initTheme();
-setupEventListeners();
+wireEvents();
 
 /* ================================================================
-   Event Listeners
+   Event Wiring
    ================================================================ */
-function setupEventListeners() {
-  // ---- File Upload ----
-  dropZone.addEventListener('click', () => fileInput.click());
+function wireEvents() {
+  /* File upload */
+  $dropZone.addEventListener('click', () => $fileInput.click());
+  $fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
-  fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
-    }
-  });
-
-  // Drag & Drop
-  dropZone.addEventListener('dragover', (e) => {
+  $dropZone.addEventListener('dragover', e => { e.preventDefault(); $dropZone.classList.add('dragover'); });
+  $dropZone.addEventListener('dragleave', () => $dropZone.classList.remove('dragover'));
+  $dropZone.addEventListener('drop', e => {
     e.preventDefault();
-    dropZone.classList.add('dragover');
+    $dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   });
 
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('dragover');
+  /* Sender modal */
+  $senderConfirm.addEventListener('click', confirmSender);
+
+  /* Header */
+  $backBtn.addEventListener('click', resetToLanding);
+  $themeBtn.addEventListener('click', () => {
+    toggleTheme();
+    // Re-render visible rows for theme-dependent rendering
+    if (scroller) scroller.rerender();
+  });
+  $searchBtn.addEventListener('click', toggleSearch);
+
+  /* Search */
+  $searchInput.addEventListener('input', debounce(doSearch, 200));
+  $searchClose.addEventListener('click', closeSearch);
+  $searchPrev.addEventListener('click', () => navSearch(-1));
+  $searchNext.addEventListener('click', () => navSearch(1));
+  $searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); navSearch(e.shiftKey ? -1 : 1); }
+    if (e.key === 'Escape') closeSearch();
   });
 
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
-    }
-  });
-
-  // ---- Sender Selection ----
-  senderConfirmBtn.addEventListener('click', confirmSender);
-
-  // ---- Header Actions ----
-  backBtn.addEventListener('click', resetToLanding);
-  themeToggleBtn.addEventListener('click', () => toggleTheme());
-  searchToggleBtn.addEventListener('click', toggleSearch);
-
-  // ---- Search ----
-  searchInput.addEventListener('input', debounce(performSearch, 250));
-  searchCloseBtn.addEventListener('click', closeSearch);
-  searchPrevBtn.addEventListener('click', () => navigateSearch(-1));
-  searchNextBtn.addEventListener('click', () => navigateSearch(1));
-
-  // Keyboard shortcuts for search
-  searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      navigateSearch(e.shiftKey ? -1 : 1);
-    }
-    if (e.key === 'Escape') {
-      closeSearch();
-    }
-  });
-
-  // ---- Scroll to Bottom Button ----
-  chatCanvas.addEventListener('scroll', handleScroll);
-  scrollBottomBtn.addEventListener('click', () => scrollToBottom(true));
+  /* Scroll-to-bottom button */
+  $chatCanvas.addEventListener('scroll', handleScroll, { passive: true });
+  $scrollBtn.addEventListener('click', () => { if (scroller) scroller.scrollToBottom('smooth'); });
 }
 
 /* ================================================================
-   File Handling
+   File Handling → Web Worker Parse
    ================================================================ */
 function handleFile(file) {
-  // Validate file type
-  if (!file.name.endsWith('.txt')) {
-    showError('Please upload a .txt file');
-    return;
+  if (!file.name.toLowerCase().endsWith('.txt')) {
+    showError('Please upload a .txt file'); return;
   }
 
-  // Show processing state
-  showProcessing(true);
+  showProcessing(true, 'Reading file…');
 
   const reader = new FileReader();
 
-  reader.onload = (e) => {
-    const rawText = e.target.result;
-
-    try {
-      chatData = parseChat(rawText);
-
-      if (chatData.messages.length === 0) {
-        showError('No messages found. Please check the file format.');
-        showProcessing(false);
-        return;
-      }
-
-      if (chatData.senders.length === 0) {
-        showError('No senders detected. Please check the file format.');
-        showProcessing(false);
-        return;
-      }
-
-      showProcessing(false);
-      showSenderModal();
-    } catch (err) {
-      console.error('Parse error:', err);
-      showError('Failed to parse the chat file. Please check the format.');
-      showProcessing(false);
+  reader.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.floor((e.loaded / e.total) * 100);
+      updateProcessingText(`Reading file… ${pct}%`);
     }
+  };
+
+  reader.onload = (e) => {
+    updateProcessingText('Parsing messages…');
+    parseInWorker(e.target.result);
   };
 
   reader.onerror = () => {
@@ -168,293 +142,292 @@ function handleFile(file) {
   reader.readAsText(file);
 }
 
+function parseInWorker(rawText) {
+  const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+
+  worker.onmessage = (e) => {
+    const msg = e.data;
+
+    if (msg.type === 'progress') {
+      updateProcessingText(`${msg.stage} (${msg.percent}%)`);
+      return;
+    }
+
+    if (msg.type === 'error') {
+      showError('Parse failed: ' + msg.error);
+      showProcessing(false);
+      worker.terminate();
+      return;
+    }
+
+    if (msg.type === 'complete') {
+      worker.terminate();
+      chatData = msg.data;
+
+      // Reconstruct Date objects (worker sends them as strings via structured clone)
+      for (let i = 0; i < chatData.messages.length; i++) {
+        const m = chatData.messages[i];
+        if (!(m.timestamp instanceof Date)) {
+          m.timestamp = new Date(m.timestamp);
+        }
+      }
+
+      if (chatData.messages.length === 0) {
+        showError('No messages found. Check the file format.');
+        showProcessing(false);
+        return;
+      }
+      if (chatData.senders.length === 0) {
+        showError('No senders detected. Check the file format.');
+        showProcessing(false);
+        return;
+      }
+
+      showProcessing(false);
+      showSenderModal();
+    }
+  };
+
+  worker.onerror = (err) => {
+    console.error('Worker error:', err);
+    showError('Parsing failed unexpectedly.');
+    showProcessing(false);
+    worker.terminate();
+  };
+
+  worker.postMessage({ rawText });
+}
+
 /* ================================================================
    Processing Overlay
    ================================================================ */
-function showProcessing(show) {
-  const existing = document.querySelector('.processing-overlay');
+function showProcessing(show, text) {
+  let overlay = document.querySelector('.processing-overlay');
   if (show) {
-    if (existing) return;
-    const overlay = document.createElement('div');
-    overlay.className = 'processing-overlay';
-    overlay.innerHTML = `
-      <div class="loading-spinner"></div>
-      <span class="processing-text">Parsing your chat...</span>
-    `;
-    const card = document.querySelector('.landing-card');
-    if (card) {
-      card.style.position = 'relative';
-      card.appendChild(overlay);
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'processing-overlay';
+      overlay.innerHTML = `<div class="loading-spinner"></div><span class="processing-text">${text || 'Processing…'}</span>`;
+      const card = document.querySelector('.landing-card');
+      if (card) { card.style.position = 'relative'; card.appendChild(overlay); }
     }
   } else {
-    if (existing) existing.remove();
+    if (overlay) overlay.remove();
   }
+}
+
+function updateProcessingText(text) {
+  const el = document.querySelector('.processing-text');
+  if (el) el.textContent = text;
 }
 
 /* ================================================================
    Error Toast
    ================================================================ */
-function showError(message) {
+function showError(msg) {
   let toast = document.querySelector('.error-toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.className = 'error-toast';
     document.body.appendChild(toast);
   }
-  toast.textContent = message;
-  // Trigger reflow for re-animation
+  toast.textContent = msg;
   toast.classList.remove('show');
   void toast.offsetWidth;
   toast.classList.add('show');
-
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 4000);
+  setTimeout(() => toast.classList.remove('show'), 4000);
 }
 
 /* ================================================================
-   Sender Selection Modal
+   Sender Modal
    ================================================================ */
 function showSenderModal() {
-  senderList.innerHTML = '';
+  $senderList.innerHTML = '';
   myName = null;
-  senderConfirmBtn.disabled = true;
+  $senderConfirm.disabled = true;
 
   // Count messages per sender
-  const msgCounts = {};
-  chatData.messages.forEach((msg) => {
-    if (msg.sender) {
-      msgCounts[msg.sender] = (msgCounts[msg.sender] || 0) + 1;
-    }
-  });
+  const counts = {};
+  for (const m of chatData.messages) {
+    if (m.sender) counts[m.sender] = (counts[m.sender] || 0) + 1;
+  }
 
-  chatData.senders.forEach((sender) => {
+  for (const sender of chatData.senders) {
     const item = document.createElement('div');
     item.className = 'sender-item';
     item.dataset.sender = sender;
 
-    const avatar = document.createElement('div');
-    avatar.className = 'sender-item-avatar';
-    avatar.textContent = getInitials(sender);
-    avatar.style.backgroundColor = getSenderColor(sender);
+    const av = document.createElement('div');
+    av.className = 'sender-item-avatar';
+    av.textContent = getInitials(sender);
+    av.style.backgroundColor = getSenderColor(sender);
 
-    const name = document.createElement('span');
-    name.className = 'sender-item-name';
-    name.textContent = sender;
+    const nm = document.createElement('span');
+    nm.className = 'sender-item-name';
+    nm.textContent = sender;
 
-    const count = document.createElement('span');
-    count.className = 'sender-item-count';
-    count.textContent = `${msgCounts[sender] || 0} msgs`;
+    const ct = document.createElement('span');
+    ct.className = 'sender-item-count';
+    ct.textContent = `${(counts[sender] || 0).toLocaleString()} msgs`;
 
-    const check = document.createElement('div');
-    check.className = 'sender-item-check';
-    check.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const chk = document.createElement('div');
+    chk.className = 'sender-item-check';
+    chk.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
 
-    item.appendChild(avatar);
-    item.appendChild(name);
-    item.appendChild(count);
-    item.appendChild(check);
-
+    item.append(av, nm, ct, chk);
     item.addEventListener('click', () => selectSender(sender));
-    senderList.appendChild(item);
-  });
+    $senderList.appendChild(item);
+  }
 
-  // Show modal, hide landing
-  landingPage.classList.add('fade-out');
-  setTimeout(() => {
-    senderModal.hidden = false;
-  }, 300);
+  $landing.classList.add('fade-out');
+  setTimeout(() => { $modal.hidden = false; }, 300);
 }
 
 function selectSender(sender) {
   myName = sender;
-  senderConfirmBtn.disabled = false;
-
-  // Update visual selection
-  document.querySelectorAll('.sender-item').forEach((item) => {
-    item.classList.toggle('selected', item.dataset.sender === sender);
+  $senderConfirm.disabled = false;
+  document.querySelectorAll('.sender-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.sender === sender);
   });
 }
 
 function confirmSender() {
   if (!myName || !chatData) return;
 
-  // Mark outgoing messages
+  $modal.hidden = true;
+  $landing.hidden = true;
+  $chatView.hidden = false;
+
+  /* Mark outgoing */
   markOutgoing(chatData.messages, myName);
 
-  // Hide modal, show chat
-  senderModal.hidden = true;
-  landingPage.hidden = true;
-  chatView.hidden = false;
-
-  // Render
+  /* Render header */
   renderChatHeader(chatData, myName);
-  renderMessages(chatData.messages, chatData.isGroup);
 
-  // Scroll to bottom after rendering
-  requestAnimationFrame(() => {
-    scrollToBottom(false);
-  });
+  /* Prepare row data & launch virtual scroller */
+  resetSenderColors();
+  allRows = prepareRows(chatData.messages, chatData.isGroup);
+
+  initVirtualScroller();
 }
 
 /* ================================================================
-   Search
+   Virtual Scroller
+   ================================================================ */
+function initVirtualScroller() {
+  if (scroller) scroller.destroy();
+  $msgContainer.innerHTML = '';
+
+  scroller = new VirtualScroller({
+    scrollContainer: $chatCanvas,
+    contentContainer: $msgContainer,
+    rows: allRows,
+    renderRow: (index) => renderRow(allRows[index], searchQuery),
+    estimateHeight: estimateRowHeight,
+    overscan: 40,
+  });
+
+  // Scroll to bottom after first paint
+  requestAnimationFrame(() => scroller.scrollToBottom('instant'));
+}
+
+/* ================================================================
+   Search (data-model, not DOM-based)
    ================================================================ */
 function toggleSearch() {
-  const isHidden = searchBar.hidden;
-  searchBar.hidden = !isHidden;
-
-  if (!isHidden) {
-    closeSearch();
-  } else {
-    searchInput.focus();
-  }
+  $searchBar.hidden = !$searchBar.hidden;
+  if (!$searchBar.hidden) { $searchInput.focus(); }
+  else { closeSearch(); }
 }
 
 function closeSearch() {
-  searchBar.hidden = true;
-  searchInput.value = '';
-  searchResultsInfo.hidden = true;
-  clearSearchHighlights();
-  searchMatches = [];
-  searchIndex = -1;
+  $searchBar.hidden = true;
+  $searchInput.value = '';
+  $searchInfo.hidden = true;
+  if (searchQuery) {
+    searchQuery = '';
+    searchHits = [];
+    searchCursor = -1;
+    if (scroller) scroller.rerender();
+  }
 }
 
-function performSearch() {
-  const query = searchInput.value.trim().toLowerCase();
-  clearSearchHighlights();
-  searchMatches = [];
-  searchIndex = -1;
+function doSearch() {
+  const q = $searchInput.value.trim().toLowerCase();
+  searchQuery = q;
+  searchHits = [];
+  searchCursor = -1;
 
-  if (!query) {
-    searchResultsInfo.hidden = true;
+  if (!q) {
+    $searchInfo.hidden = true;
+    if (scroller) scroller.rerender();
     return;
   }
 
-  // Find all message-text elements that contain the query
-  const textEls = document.querySelectorAll('.message-text');
-
-  textEls.forEach((textEl) => {
-    const originalText = textEl.textContent;
-    if (originalText.toLowerCase().includes(query)) {
-      // Highlight matches
-      const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
-      const highlighted = escapeHtml(originalText).replace(regex, '<mark class="search-highlight">$1</mark>');
-      textEl.innerHTML = highlighted;
-      searchMatches.push(textEl);
+  /* Scan all rows for text matches */
+  for (let i = 0; i < allRows.length; i++) {
+    const row = allRows[i];
+    let text = '';
+    if (row.type === 'message' || row.type === 'system') {
+      text = row.message.text;
     }
-  });
-
-  // Also search system messages
-  const systemEls = document.querySelectorAll('.system-message');
-  systemEls.forEach((sysEl) => {
-    if (sysEl.textContent.toLowerCase().includes(query)) {
-      searchMatches.push(sysEl);
+    if (text && text.toLowerCase().includes(q)) {
+      searchHits.push(i);
     }
-  });
+  }
 
-  // Show results info
-  searchResultsInfo.hidden = false;
-  if (searchMatches.length > 0) {
-    searchIndex = 0;
-    searchResultsCount.textContent = `1 of ${searchMatches.length}`;
-    highlightCurrentMatch();
+  $searchInfo.hidden = false;
+  if (searchHits.length > 0) {
+    searchCursor = 0;
+    $searchCount.textContent = `1 of ${searchHits.length.toLocaleString()}`;
+    scroller.rerender();
+    scroller.scrollToRow(searchHits[0]);
   } else {
-    searchResultsCount.textContent = 'No results';
+    $searchCount.textContent = 'No results';
+    scroller.rerender();
   }
 }
 
-function navigateSearch(direction) {
-  if (searchMatches.length === 0) return;
-
-  // Remove active class from current
-  removeActiveHighlight();
-
-  searchIndex += direction;
-  if (searchIndex >= searchMatches.length) searchIndex = 0;
-  if (searchIndex < 0) searchIndex = searchMatches.length - 1;
-
-  searchResultsCount.textContent = `${searchIndex + 1} of ${searchMatches.length}`;
-  highlightCurrentMatch();
-}
-
-function highlightCurrentMatch() {
-  if (searchIndex < 0 || searchIndex >= searchMatches.length) return;
-
-  const el = searchMatches[searchIndex];
-  const highlights = el.querySelectorAll('.search-highlight');
-  if (highlights.length > 0) {
-    highlights[0].classList.add('active');
-  }
-
-  // Scroll to the matched element
-  el.closest('.message-row, .system-message')?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'center',
-  });
-}
-
-function removeActiveHighlight() {
-  document.querySelectorAll('.search-highlight.active').forEach((el) => {
-    el.classList.remove('active');
-  });
-}
-
-function clearSearchHighlights() {
-  // Re-render text content to remove highlights
-  const highlighted = document.querySelectorAll('.message-text');
-  highlighted.forEach((el) => {
-    const marks = el.querySelectorAll('mark.search-highlight');
-    if (marks.length > 0) {
-      // Restore original text
-      el.textContent = el.textContent;
-    }
-  });
-}
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function navSearch(dir) {
+  if (!searchHits.length) return;
+  searchCursor += dir;
+  if (searchCursor >= searchHits.length) searchCursor = 0;
+  if (searchCursor < 0) searchCursor = searchHits.length - 1;
+  $searchCount.textContent = `${(searchCursor + 1).toLocaleString()} of ${searchHits.length.toLocaleString()}`;
+  scroller.scrollToRow(searchHits[searchCursor]);
 }
 
 /* ================================================================
-   Scroll Handling
+   Scroll-to-bottom button
    ================================================================ */
 function handleScroll() {
-  const canvas = chatCanvas;
-  const distanceFromBottom = canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight;
-
-  if (distanceFromBottom > 200) {
-    scrollBottomBtn.hidden = false;
-    requestAnimationFrame(() => scrollBottomBtn.classList.add('visible'));
+  const dist = $chatCanvas.scrollHeight - $chatCanvas.scrollTop - $chatCanvas.clientHeight;
+  if (dist > 300) {
+    $scrollBtn.hidden = false;
+    requestAnimationFrame(() => $scrollBtn.classList.add('visible'));
   } else {
-    scrollBottomBtn.classList.remove('visible');
-    setTimeout(() => {
-      if (!scrollBottomBtn.classList.contains('visible')) {
-        scrollBottomBtn.hidden = true;
-      }
-    }, 300);
+    $scrollBtn.classList.remove('visible');
+    setTimeout(() => { if (!$scrollBtn.classList.contains('visible')) $scrollBtn.hidden = true; }, 300);
   }
 }
 
 /* ================================================================
-   Reset / Back to Landing
+   Reset
    ================================================================ */
 function resetToLanding() {
-  chatView.hidden = true;
-  senderModal.hidden = true;
-  landingPage.hidden = false;
-  landingPage.classList.remove('fade-out');
+  if (scroller) { scroller.destroy(); scroller = null; }
+  $chatView.hidden = true;
+  $modal.hidden = true;
+  $landing.hidden = false;
+  $landing.classList.remove('fade-out');
 
-  // Reset state
   chatData = null;
   myName = null;
-  searchMatches = [];
-  searchIndex = -1;
-  fileInput.value = '';
-
-  // Clear chat
-  document.getElementById('messages-container').innerHTML = '';
-
-  // Close search if open
+  allRows = [];
+  searchQuery = '';
+  searchHits = [];
+  searchCursor = -1;
+  $fileInput.value = '';
+  $msgContainer.innerHTML = '';
   closeSearch();
 }
