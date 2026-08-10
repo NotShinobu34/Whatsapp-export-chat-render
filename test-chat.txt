@@ -1,0 +1,35 @@
+[25/12/23, 10:30:15 AM] Messages and calls are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them. Tap to learn more.
+[25/12/23, 10:30:15 AM] Alice: Hey! Merry Christmas! 🎄🎅
+[25/12/23, 10:31:02 AM] Bob: Merry Christmas Alice! 🎁✨
+[25/12/23, 10:31:45 AM] Bob: How's the holiday going?
+[25/12/23, 10:32:30 AM] Alice: Amazing! Just opened presents with the family
+[25/12/23, 10:32:45 AM] Alice: Look at what I got!
+[25/12/23, 10:32:46 AM] Alice: <Media omitted>
+[25/12/23, 10:33:15 AM] Bob: Wow that looks awesome! 😍
+[25/12/23, 10:34:00 AM] Bob: Here's what my tree looks like
+[25/12/23, 10:34:01 AM] Bob: image omitted
+[25/12/23, 10:35:00 AM] Alice: Beautiful! 🎄
+[25/12/23, 10:35:30 AM] Alice: Let me send you the song we're playing
+[25/12/23, 10:35:31 AM] Alice: audio omitted
+[25/12/23, 10:36:00 AM] Bob: Nice! Here's a video of the snow outside
+[25/12/23, 10:36:01 AM] Bob: video omitted
+[25/12/23, 10:37:00 AM] Alice: OMG so pretty!! ❄️
+[25/12/23, 10:37:30 AM] Alice: Check out this website: https://example.com/christmas
+[25/12/23, 10:38:00 AM] Bob: 😂😂😂
+[25/12/23, 10:39:00 AM] Alice: Here's the recipe document
+[25/12/23, 10:39:01 AM] Alice: document omitted
+[25/12/23, 10:40:00 AM] Bob: Thanks! I'll check it out later
+[25/12/23, 10:40:30 AM] Bob: By the way, here's my cousin's contact
+[25/12/23, 10:40:31 AM] Bob: Contact card omitted
+[26/12/23, 9:00:00 AM] Alice: Good morning! How was Boxing Day?
+[26/12/23, 9:15:00 AM] Bob: Great! We went ice skating ⛸️
+[26/12/23, 9:15:30 AM] Bob: It was so much fun
+[26/12/23, 9:16:00 AM] Bob: We should go together next time!
+[26/12/23, 9:20:00 AM] Alice: Yes definitely! That sounds amazing
+[26/12/23, 9:20:15 AM] Alice: sticker omitted
+[26/12/23, 9:21:00 AM] Bob: Haha love that sticker
+[26/12/23, 9:25:00 AM] Alice: Want to meet up this weekend?
+We could go to that new café downtown
+It has great reviews!
+[26/12/23, 9:26:00 AM] Bob: Sure! Saturday works for me
+[26/12/23, 9:27:00 AM] Alice: Perfect, see you then! 👋
