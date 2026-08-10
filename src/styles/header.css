@@ -1,0 +1,131 @@
+/* ============================================================
+   Chat Header Bar
+   ============================================================ */
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 16px;
+  background: var(--bg-header);
+  box-shadow: var(--shadow-header);
+  z-index: var(--z-header);
+  flex-shrink: 0;
+  transition: background-color var(--transition-normal);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Back Button */
+.header-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-icon-header);
+  transition: background-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.header-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .header-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Avatar */
+.header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-whatsapp-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+/* Info block */
+.header-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.header-name {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  transition: color var(--transition-normal);
+}
+
+.header-status {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  transition: color var(--transition-normal);
+}
+
+/* Theme toggle icon swap */
+.icon-moon {
+  display: none;
+}
+
+[data-theme="dark"] .icon-sun {
+  display: none;
+}
+
+[data-theme="dark"] .icon-moon {
+  display: block;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 480px) {
+  .chat-header {
+    padding: 0 8px;
+    height: 54px;
+  }
+
+  .header-left {
+    gap: 8px;
+  }
+
+  .header-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: var(--font-size-base);
+  }
+
+  .header-name {
+    font-size: var(--font-size-base);
+  }
+}
